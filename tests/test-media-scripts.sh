@@ -22,4 +22,16 @@ if "$project_root/scripts/render-liveportrait.sh" >/dev/null 2>&1; then
   exit 1
 fi
 
+# An interrupted template must fail before Python runs or output is created.
+: > "$work_dir/empty.pkl"
+status=0
+LIVEPORTRAIT_DIR="$work_dir" "$project_root/scripts/render-liveportrait.sh" \
+  "$work_dir/source.png" "$work_dir/empty.pkl" "$work_dir/rejected-output" \
+  > "$work_dir/rejection.log" 2>&1 || status=$?
+if [[ "$status" -ne 2 || -d "$work_dir/rejected-output" ]] ||
+   ! grep -q 'driving input is empty' "$work_dir/rejection.log"; then
+  echo "empty driving template was not rejected before inference" >&2
+  exit 1
+fi
+
 echo "media script tests passed"

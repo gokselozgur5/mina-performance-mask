@@ -40,6 +40,10 @@ liveportrait_dir=${LIVEPORTRAIT_DIR:-}
   echo "ERROR: driving input does not exist: $driving_media" >&2
   exit 2
 }
+[[ -s "$driving_media" ]] || {
+  echo "ERROR: driving input is empty; use the original video to regenerate an interrupted motion template" >&2
+  exit 2
+}
 
 mkdir -p "$output_dir"
 
