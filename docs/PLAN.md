@@ -10,16 +10,21 @@
 Exit condition: Mina visibly follows the recorded performance without identity
 drift or a failed face boundary.
 
-Status: a two-second, 50-frame CPU diagnostic completed. The full private
-driving clip is being evaluated separately from the public repository. Native
-PyTorch GPU inference currently resets the Thor board and is blocked pending a
-compatible runtime or engine.
+Status: the two-second diagnostic and a full 16-second, 400-frame CPU render
+completed. The full output passed decoding and transfer-integrity checks. The
+owner accepted it as a promising starting point while reporting visual
+anomalies; the visual-quality exit condition remains open. Next, identify the
+affected timestamps and evaluate eyes, mouth, face boundaries, and identity
+stability. Media remains private. See [CPU render steps](CPU_RENDER.md).
+Native GPU inference reset the board in MAXN and 120 W modes; do not rerun it
+on this stack.
 
 ## Phase 2: latency baseline
 
 - Measure decode, face analysis, inference, composition, and encode separately.
-- Reproduce the native GPU reset with persistent system logs or a minimal model
-  probe before running another full workload.
+- Review existing reset evidence and runtime compatibility without GPU inference.
+  GPU execution remains blocked until a separate recovery plan is explicitly
+  authorized; this plan does not authorize another reset reproduction.
 - Convert only supported networks with a Thor-compatible TensorRT 10 path.
 - Select a resolution and quality preset from measured results.
 

@@ -20,7 +20,13 @@ model weights, and rendered videos stay outside Git.
 The reproducible preparation and host-preflight layer is complete. The target
 Jetson AGX Thor was verified with L4T R38.4, CUDA 13.0, and native CUDA-enabled
 PyTorch 2.12.1. A 50-frame CPU diagnostic render completed with the official
-PyTorch LivePortrait path. The same workload reproducibly reset the board on
+PyTorch LivePortrait path. A full 16-second CPU render subsequently completed
+with 400 frames at 25 fps and a 512 x 960 H.264 output. Full decoding and a
+source/destination checksum match verified the private transfer. The owner
+considered it a promising first result but reported visual anomalies; detailed
+quality review remains open. This is an offline milestone, not a real-time
+performance claim. See [the CPU runbook](docs/CPU_RENDER.md) for execution,
+recovery, and output verification. The same diagnostic workload reproducibly reset the board on
 the current GPU path in both MAXN and 120 W modes, so GPU execution is not yet
 declared safe. FasterLivePortrait's documented TensorRT 8.x path is not
 installed because Thor ships TensorRT 10; acceleration remains a separate,
