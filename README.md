@@ -1,36 +1,69 @@
 # Mina Performance Mask
 
 Mina Performance Mask transfers a consenting performer's head pose and facial
-expressions onto a fixed Mina portrait. The first milestone renders a recorded
-driving clip locally. A later milestone replaces that clip with a webcam stream.
+expressions onto a fixed Mina portrait. The live prototype captures camera
+frames in a browser, processes them on a Runpod GPU, and returns Mina frames
+to the same page. An offline CPU path is also available.
+
+## Start here — humans and fresh AI sessions
+
+Read [AGENTS.md](AGENTS.md), then [current status](docs/STATUS.md).
+The complete [live runbook](docs/RUNPOD_LIVE.md) covers deployment, browser
+opening, verification, and cleanup. [Architecture](docs/ARCHITECTURE.md)
+explains the code and HTTP contract.
+
+**Latest state (2026-10-24): the live app was demonstrated, then all paid
+resources were closed at the owner's request.** This repository is the source
+and handoff, not an always-running hosted website. Recheck cloud state before
+resuming. Private source portraits and credentials are intentionally absent.
+
+A new AI can start with this prompt:
+
+> Continue Mina Performance Mask from this repository. Read AGENTS.md and
+> docs/STATUS.md first, then the linked runbook. Explain the current state and
+> next step before changing infrastructure. Preserve the privacy boundary.
+> Do not create paid resources unless my current request authorizes deployment.
+> If I ask to run the app, deliver the actual working browser page, not a
+> screenshot or benchmark alone, and report what remains billing.
 
 ## Pipeline
 
 ```text
-Mina portrait/video -> canonical source portrait ----+
-                                                    |
-performer clip -> normalized driving video ---------+-> portrait animation -> MP4
+Browser camera -> JPEG -> HTTP over SSH -> resident Runpod LivePortrait
+                                             + fixed source portrait
+Browser Mina canvas <- JPEG <---------------+
 ```
 
-The performer supplies motion only. Mina remains the visible identity. Inputs,
-model weights, and rendered videos stay outside Git.
+The performer supplies motion; Mina remains the output identity. The application
+does not record live frames. Inputs, model weights, logs, templates, and outputs
+stay outside Git. The browser demo is single-client and loopback-only.
 
-## Current milestone
+## Verified baseline
 
-The reproducible preparation and host-preflight layer is complete. The target
-Jetson AGX Thor was verified with L4T R38.4, CUDA 13.0, and native CUDA-enabled
-PyTorch 2.12.1. A 50-frame CPU diagnostic render completed with the official
-PyTorch LivePortrait path. A full 16-second CPU render subsequently completed
-with 400 frames at 25 fps and a 512 x 960 H.264 output. Full decoding and a
-source/destination checksum match verified the private transfer. The owner
-considered it a promising first result but reported visual anomalies; detailed
-quality review remains open. This is an offline milestone, not a real-time
-performance claim. See [the CPU runbook](docs/CPU_RENDER.md) for execution,
-recovery, and output verification. The same diagnostic workload reproducibly reset the board on
-the current GPU path in both MAXN and 120 W modes, so GPU execution is not yet
-declared safe. FasterLivePortrait's documented TensorRT 8.x path is not
-installed because Thor ships TensorRT 10; acceleration remains a separate,
-measured compatibility phase.
+- Thor CPU: full 16-second / 400-frame offline render completed. Visual anomalies
+  remain to be characterized. Thor GPU inference reset the board in both MAXN
+  and 120 W modes; do not retry that path.
+- Runpod RTX 4090: public offline animation about 37 FPS; full MP4 processing
+  about 20 FPS. HTTP browser delivery about 4.75 FPS / 194 ms median capture to
+  canvas on the tested client/network.
+- Runpod RTX 5090: Mina source with a public fake-camera smoke test returned
+  512 x 960 frames; 175 ms median capture to canvas over 20 frames. The owner
+  responded positively after delivery; this is not a recorded
+  physical-camera latency measurement or proof of sustained 25 FPS.
+
+See [status and limitations](docs/STATUS.md), [timing definitions](docs/HTTP_LATENCY.md),
+and [offline CPU recovery](docs/CPU_RENDER.md). Source and model revisions are
+pinned in [config/upstream.env.example](config/upstream.env.example).
+
+## Checks without renting a GPU
+
+```bash
+make test
+```
+
+Requires Python 3, FFmpeg, and FFprobe. Browser/GPU smoke tests are separate;
+see [the live runbook](docs/RUNPOD_LIVE.md). Do not rent a machine only to read
+or edit this repository.
 
 ## Prepare the two inputs
 
