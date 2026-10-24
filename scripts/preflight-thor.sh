@@ -16,12 +16,27 @@ else
   echo "nvcc=unavailable"
 fi
 
-if command -v docker >/dev/null; then
-  echo "docker=$(docker --version)"
-  runtime=$(docker info --format '{{json .Runtimes}}' 2>/dev/null || true)
-  echo "docker_runtimes=${runtime:-unavailable}"
+if command -v python3 >/dev/null; then
+  python3 - <<'PY'
+try:
+    import torch
+except ImportError:
+    print("torch=unavailable")
+else:
+    print(f"torch={torch.__version__}")
+    print(f"torch_cuda_available={torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"torch_cuda_device={torch.cuda.get_device_name(0)}")
+PY
 else
-  echo "docker=unavailable"
+  echo "python3=unavailable"
+fi
+
+if command -v nvpmodel >/dev/null; then
+  power_mode=$(nvpmodel -q 2>/dev/null | head -n 1 || true)
+  echo "power_mode=${power_mode:-unavailable}"
+else
+  echo "power_mode=unavailable"
 fi
 
 if command -v ffmpeg >/dev/null; then
@@ -36,7 +51,7 @@ echo "workspace_free_kib=$available_kib"
 fail=0
 [[ "$(uname -m)" == "aarch64" ]] || { echo "ERROR: expected aarch64 Thor host" >&2; fail=1; }
 [[ -r /etc/nv_tegra_release ]] || { echo "ERROR: L4T release is unavailable" >&2; fail=1; }
-command -v docker >/dev/null || { echo "ERROR: Docker is required" >&2; fail=1; }
+command -v python3 >/dev/null || { echo "ERROR: Python 3 is required" >&2; fail=1; }
 command -v ffmpeg >/dev/null || { echo "ERROR: FFmpeg is required" >&2; fail=1; }
 (( available_kib >= 31457280 )) || { echo "ERROR: at least 30 GiB free space is required" >&2; fail=1; }
 

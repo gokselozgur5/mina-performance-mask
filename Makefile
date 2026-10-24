@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: source driving verify test preflight
+.PHONY: source driving verify render test preflight
 
 source:
 	@test -n "$(MINA_VIDEO)" || (echo "MINA_VIDEO is required" >&2; exit 2)
@@ -16,6 +16,12 @@ verify:
 	@test -n "$(MINA_SOURCE)" || (echo "MINA_SOURCE is required" >&2; exit 2)
 	@test -n "$(NORMALIZED_DRIVING)" || (echo "NORMALIZED_DRIVING is required" >&2; exit 2)
 	./scripts/verify-inputs.sh "$(MINA_SOURCE)" "$(NORMALIZED_DRIVING)"
+
+render:
+	@test -n "$(MINA_SOURCE)" || (echo "MINA_SOURCE is required" >&2; exit 2)
+	@test -n "$(DRIVING)" || (echo "DRIVING is required" >&2; exit 2)
+	@test -n "$(OUTPUT_DIR)" || (echo "OUTPUT_DIR is required" >&2; exit 2)
+	./scripts/render-liveportrait.sh "$(MINA_SOURCE)" "$(DRIVING)" "$(OUTPUT_DIR)" "$(BACKEND)"
 
 test:
 	./tests/test-media-scripts.sh
