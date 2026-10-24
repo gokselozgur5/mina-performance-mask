@@ -25,6 +25,7 @@ render:
 
 test:
 	./tests/test-media-scripts.sh
+	python3 tests/test-live-http.py
 
 preflight:
 	./scripts/preflight-thor.sh

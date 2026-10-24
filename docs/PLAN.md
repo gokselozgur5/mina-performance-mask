@@ -1,5 +1,8 @@
 # Delivery plan
 
+Read [current status](STATUS.md) for the latest handoff. Paid resources are
+currently closed at the owner's request; deployment requires a new authorized run.
+
 ## Phase 1: recorded performance
 
 - Extract one canonical Mina source portrait from the existing asset.
@@ -21,6 +24,9 @@ on this stack.
 
 ## Phase 2: latency baseline
 
+Status: cloud offline and browser/SSH baselines measured on 4090 and 5090;
+see [timings](HTTP_LATENCY.md). Sustained physical-camera timing remains open.
+
 - Measure decode, face analysis, inference, composition, and encode separately.
 - Review existing reset evidence and runtime compatibility without GPU inference.
   GPU execution remains blocked until a separate recovery plan is explicitly
@@ -33,9 +39,14 @@ measured end-to-end latency.
 
 ## Phase 3: live mirror
 
-- Replace the driving file with a webcam capture ring buffer.
+Status: browser camera → Runpod → Mina prototype delivered and positively
+received by the owner. It was then shut down on request. Current implementation
+uses one in-flight HTTP frame and drops stale capture opportunities.
+
+- Improve the implemented webcam path with bounded streaming transport.
 - Add bounded queues and stale-frame dropping.
-- Add start/stop recording and a visible AI-generated indicator.
+- Preserve Start/Stop capture and no-recording behavior; add a visible
+  AI-generated label. Recording is out of scope without explicit authorization.
 
 Exit condition: a five-minute local session without growing latency, memory, or
 temperature.

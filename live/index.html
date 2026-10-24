@@ -1,0 +1,60 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mina Live</title>
+<style>body{background:#13151b;color:#ececf4;font:16px system-ui;margin:32px auto;max-width:1100px;padding:0 20px}button{font:inherit;padding:12px 18px;margin:8px 8px 8px 0;border:0;border-radius:8px;background:#b2a0ff}button:disabled{opacity:.4}.views{display:flex;gap:20px;flex-wrap:wrap}.views>div{flex:1;min-width:280px}video,canvas{width:100%;max-height:60vh;object-fit:contain;background:#090b10;border-radius:12px}#stats{font:15px monospace;white-space:pre-wrap;line-height:1.6}small{color:#b3b6c8}</style>
+<h1>Mina Live</h1><p>Kamerandaki hareketler, Mina’da canlı.</p>
+<button id="sample">Örnekle dene</button><button id="camera" disabled>Kamerayı başlat</button><button id="stop" disabled>Durdur</button><button id="download">Ölçümleri indir</button>
+<p id="status">Connecting…</p><small>Kamera kareleri Runpod’da işlenir; uygulama görüntüleri kaydetmez. Başlangıçta yüzünü kameraya dön. Durdur düğmesi kamera aktarımını keser.</small>
+<div class="views"><div><h3>Sen</h3><video id="input" muted playsinline loop></video></div><div><h3>Mina</h3><canvas id="output"></canvas></div></div><p id="stats"></p>
+<script>
+const input=document.querySelector('#input'),output=document.querySelector('#output'),statusEl=document.querySelector('#status'),stats=document.querySelector('#stats');
+const sampleButton=document.querySelector('#sample'),cameraButton=document.querySelector('#camera'),stopButton=document.querySelector('#stop');
+const capture=document.createElement('canvas'),ctx=capture.getContext('2d'),out=output.getContext('2d');
+let active=false,generation=0,stream=null,allowCamera=false,started=0,controller=null;
+window.timings=[];window.testState={active:false,errors:0,mode:null};
+function quantile(values,q){const a=[...values].sort((a,b)=>a-b);return a[Math.min(a.length-1,Math.floor(a.length*q))]??0;}
+function summary(){const a=window.timings.slice(5),r=a.map(x=>x.roundtripMs),t=a.map(x=>x.captureToCanvasMs),s=a.map(x=>x.serverMs);return {frames:window.timings.length,warmFrames:a.length,roundtripMedianMs:quantile(r,.5),roundtripP95Ms:quantile(r,.95),captureToCanvasMedianMs:quantile(t,.5),captureToCanvasP95Ms:quantile(t,.95),serverMedianMs:quantile(s,.5),deliveredFps:window.timings.length/((performance.now()-started)/1000)};}
+window.latencySummary=summary;
+function halt(){active=false;generation++;window.testState.active=false;controller?.abort();if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}input.pause();sampleButton.disabled=false;cameraButton.disabled=!allowCamera;stopButton.disabled=true;statusEl.textContent='Durduruldu';}
+stopButton.onclick=halt;
+async function start(mode){
+ halt();const id=generation;controller=new AbortController();window.timings=[];window.testState={active:false,errors:0,mode};
+ sampleButton.disabled=true;cameraButton.disabled=true;stopButton.disabled=false;
+ try{
+  if(mode==='camera'){
+   if(!allowCamera)throw Error('Camera not enabled');
+   const acquired=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480},frameRate:{ideal:25}},audio:false});
+   if(id!==generation){acquired.getTracks().forEach(t=>t.stop());return;}
+   stream=acquired;input.removeAttribute('src');input.srcObject=stream;
+  }else{input.srcObject=null;input.src='/sample.mp4';}
+  await input.play();
+  const reset=await fetch('/reset',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:new Uint8Array(),signal:controller.signal});
+  if(!reset.ok)throw Error('Reset failed');
+  if(id!==generation)return;
+  active=true;window.testState.active=true;started=performance.now();statusEl.textContent=mode==='camera'?'Kamera açık — ilk karede yüzünü öne çevir':'Public sample active';
+  while(active&&id===generation){
+   const captureStart=performance.now();
+   const scale=Math.min(640/input.videoWidth,480/input.videoHeight,1);
+   capture.width=Math.max(64,Math.round(input.videoWidth*scale));capture.height=Math.max(64,Math.round(input.videoHeight*scale));
+   ctx.drawImage(input,0,0,capture.width,capture.height);
+   const blob=await new Promise(resolve=>capture.toBlob(resolve,'image/jpeg',.8));
+   if(id!==generation)return;
+   const sent=performance.now();
+   const res=await fetch('/frame',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:blob,signal:controller.signal});
+   const bytes=await res.blob();const received=performance.now();
+   if(!res.ok){window.testState.errors++;if(res.status===422||res.status===429){statusEl.textContent=res.status===422?'Yüzünü kameraya çevir; bekliyorum…':'İşleniyor…';await new Promise(r=>setTimeout(r,100));continue;}throw Error('Frame rejected: '+res.status);}
+   const image=await createImageBitmap(bytes);
+   if(id!==generation){image.close();return;}
+   output.width=image.width;output.height=image.height;out.drawImage(image,0,0);image.close();
+   const drawn=performance.now();statusEl.textContent=mode==='camera'?'Mina canlı — görüntü kaydedilmiyor':'Örnek akış çalışıyor';
+   window.timings.push({roundtripMs:received-sent,captureToCanvasMs:drawn-captureStart,inferenceMs:Number(res.headers.get('X-Inference-Ms')),serverMs:Number(res.headers.get('X-Server-Ms')),inputBytes:blob.size,outputBytes:bytes.size});
+   if(window.timings.length>2000)window.timings.shift();
+   const m=summary();stats.textContent=`Frames: ${m.frames} | Delivered: ${m.deliveredFps.toFixed(1)} FPS\nHTTP round trip: ${m.roundtripMedianMs.toFixed(0)} ms median / ${m.roundtripP95Ms.toFixed(0)} ms p95\nCapture → canvas: ${m.captureToCanvasMedianMs.toFixed(0)} ms median / ${m.captureToCanvasP95Ms.toFixed(0)} ms p95\nServer: ${m.serverMedianMs.toFixed(0)} ms median`;
+   await new Promise(requestAnimationFrame);
+  }
+ }catch(e){if(id===generation){halt();statusEl.textContent=e.name==='AbortError'?'Durduruldu':e.message;}}
+}
+sampleButton.onclick=()=>start('sample');cameraButton.onclick=()=>start('camera');
+document.querySelector('#download').onclick=()=>{const u=URL.createObjectURL(new Blob([JSON.stringify({mode:window.testState.mode,summary:summary(),frames:window.timings},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=u;a.download='portrait-timings.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);};
+fetch('/health').then(r=>r.json()).then(x=>{allowCamera=x.allow_camera;cameraButton.disabled=!allowCamera;statusEl.textContent=allowCamera?'Hazır — Kamerayı başlat düğmesine bas':'Ready — public sample only; camera disabled';}).catch(()=>statusEl.textContent='Server unavailable');
+window.addEventListener('beforeunload',halt);
+</script></html>
