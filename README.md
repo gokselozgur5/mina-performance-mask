@@ -18,11 +18,13 @@ model weights, and rendered videos stay outside Git.
 ## Current milestone
 
 The reproducible preparation and host-preflight layer is complete. The target
-Jetson AGX Thor was verified with L4T R38.4, CUDA 13.0, native CUDA-enabled
-PyTorch 2.12.1, and MAXN mode. The first offline render uses the official
-PyTorch LivePortrait path. FasterLivePortrait's documented TensorRT 8.x path is
-not installed because it is incompatible with Thor's current software stack;
-live acceleration remains a separate measured phase.
+Jetson AGX Thor was verified with L4T R38.4, CUDA 13.0, and native CUDA-enabled
+PyTorch 2.12.1. A 50-frame CPU diagnostic render completed with the official
+PyTorch LivePortrait path. The same workload reproducibly reset the board on
+the current GPU path in both MAXN and 120 W modes, so GPU execution is not yet
+declared safe. FasterLivePortrait's documented TensorRT 8.x path is not
+installed because Thor ships TensorRT 10; acceleration remains a separate,
+measured compatibility phase.
 
 ## Prepare the two inputs
 
@@ -49,16 +51,28 @@ first test.
 
 ## Thor handoff
 
-Run the read-only preflight after SSH access is available:
+Run the read-only preflight on Thor:
 
 ```bash
 ./scripts/preflight-thor.sh
 ```
 
-The inference backend will be pinned only after that report confirms L4T,
-CUDA, GPU architecture, Docker runtime, and free disk space. The intended
-backend is FasterLivePortrait with TensorRT, using the official LivePortrait
-motion-transfer model.
+Then render with a pinned LivePortrait checkout and an activated Python
+environment. CPU is deliberately the safe default:
+
+```bash
+export LIVEPORTRAIT_DIR=/path/to/LivePortrait
+./scripts/render-liveportrait.sh \
+  /private/input/mina-source.png \
+  /private/input/driving.mp4 \
+  /private/output \
+  cpu
+```
+
+LivePortrait also writes a private `.pkl` motion template beside a driving
+video. Supplying that template on later runs avoids reading the raw performer
+video again. Do not select the `gpu` backend on an unverified Thor software
+stack: a successful CUDA import is not proof that every model kernel is safe.
 
 ## Safety and provenance
 

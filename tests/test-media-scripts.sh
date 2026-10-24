@@ -16,4 +16,10 @@ ffmpeg -hide_banner -loglevel error -y \
 "$project_root/scripts/verify-inputs.sh" \
   "$work_dir/source.png" "$work_dir/driving.mp4"
 
+bash -n "$project_root/scripts/render-liveportrait.sh"
+if "$project_root/scripts/render-liveportrait.sh" >/dev/null 2>&1; then
+  echo "render script accepted missing arguments" >&2
+  exit 1
+fi
+
 echo "media script tests passed"
