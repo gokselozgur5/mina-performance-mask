@@ -17,10 +17,12 @@ model weights, and rendered videos stay outside Git.
 
 ## Current milestone
 
-The repository currently provides the reproducible preparation and host
-preflight layer. GPU inference is intentionally blocked until the target Thor is
-reachable and its exact JetPack, CUDA, and container versions have been read.
-This avoids installing incompatible generic ARM64 CUDA wheels.
+The reproducible preparation and host-preflight layer is complete. The target
+Jetson AGX Thor was verified with L4T R38.4, CUDA 13.0, native CUDA-enabled
+PyTorch 2.12.1, and MAXN mode. The first offline render uses the official
+PyTorch LivePortrait path. FasterLivePortrait's documented TensorRT 8.x path is
+not installed because it is incompatible with Thor's current software stack;
+live acceleration remains a separate measured phase.
 
 ## Prepare the two inputs
 
@@ -62,6 +64,14 @@ motion-transfer model.
 
 - Only animate images and performances that you own or have permission to use.
 - Keep raw camera footage private by default.
+- Private source and driving media belong under ignored local artifact folders
+  and must never be committed.
 - Mark shared renders as AI-generated.
 - Do not use the pipeline to impersonate another person or misrepresent a real
   recording.
+
+## License
+
+The orchestration code in this repository is MIT licensed. LivePortrait,
+FasterLivePortrait, model weights, and generated media remain subject to their
+respective licenses and permissions.
